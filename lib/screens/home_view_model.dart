@@ -1,0 +1,48 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_pagination/Models/data_model.dart';
+
+class HomeViewModel extends ChangeNotifier {
+  final ScrollController scrollController = ScrollController();
+  final dio = Dio();
+
+  final String _url = "https://dummyjson.com/posts";
+
+  DataModel? dataModel;
+
+  int _skip = 0;
+  bool loading = false;
+  void setLoading(bool value) {
+    loading = value;
+    notifyListeners();
+  }
+
+  Future<void> fetchData() async {
+    final args = {"limit": 108, "skip": _skip};
+    setLoading(true);
+    final Response res = await dio.request(_url, queryParameters: args);
+    setLoading(false);
+
+    if (res.statusCode != 200) {
+      return Future.error("hata: ${res.statusMessage}");
+    }
+    _skip += 10;
+    final data = DataModel.fromJson(res.data);
+    if (dataModel == null) {
+      dataModel = data;
+    } else {
+      dataModel!.posts!.addAll(data.posts!);
+    }
+    notifyListeners();
+  }
+
+  void listenScrollBottom() {
+    scrollController.addListener(() {
+      if (scrollController.position.atEdge) {
+        final bool top = scrollController.position.pixels == 0;
+        if (!top && !loading) fetchData();
+      }
+    });
+  }
+}
